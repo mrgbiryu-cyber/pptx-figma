@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>CNS Atlas PPT Visual Test V51</title>
+    <style>
+      body {
+        font-family: Inter, Arial, sans-serif;
+        margin: 16px;
+        color: #1f2937;
+        background: #f7f7f8;
+      }
+
+      h1 {
+        font-size: 16px;
+        margin: 0 0 12px;
+      }
+
+      p {
+        font-size: 12px;
+        line-height: 1.5;
+        margin: 0 0 12px;
+      }
+
+      .panel {
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .label {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 6px;
+      }
+
+      .summary {
+        font-size: 12px;
+        color: #111827;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        min-height: 72px;
+        white-space: pre-wrap;
+      }
+
+      textarea {
+        width: 100%;
+        height: 120px;
+        resize: vertical;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        box-sizing: border-box;
+      }
+
+      button {
+        background: #111827;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: white;
+        color: #111827;
+        border: 1px solid #cbd5e1;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status {
+        font-size: 12px;
+        margin-top: 8px;
+      }
+
+      .hint {
+        color: #4b5563;
+      }
+
+      .danger {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>CNS Atlas PPT Visual Test V51</h1>
+
+    <div class="panel">
+      <p class="hint">
+        JSON bundle을 바로 올릴 수 있고, 로컬 helper server를 켜두면 <code>PPTX</code>도 직접 올릴 수 있습니다.
+      </p>
+      <div class="row">
+        <input id="fileInput" type="file" accept=".json,.pptx,application/json,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+        <button class="secondary" id="clearButton" type="button">초기화</button>
+      </div>
+      <div class="status" id="status">V51 | JSON 파일을 선택하세요.</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">PPTX 직접 업로드</div>
+      <div class="row">
+        <input id="pptxFileInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+      </div>
+      <div class="row" style="margin-top: 8px;">
+        <input id="pptxSlides" type="text" placeholder="예: 12,19,29 또는 29, 비워두면 전체" style="flex:1; border:1px solid #cbd5e1; border-radius:8px; padding:10px; font-size:12px;" />
+        <button class="secondary" id="renderPptxButton" type="button">PPTX 변환 후 렌더</button>
+      </div>
+      <p class="hint">먼저 <code>python3 scripts/figma_plugin_local_server.py</code>를 실행해야 합니다. 페이지 번호를 비우면 전체 슬라이드를 처리합니다.</p>
+    </div>
+
+    <div class="panel">
+      <div class="label">불러온 파일 요약</div>
+      <div class="summary" id="summary">아직 파일이 없습니다.</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">직접 JSON 붙여넣기</div>
+      <textarea id="jsonText" placeholder="필요하면 intermediate JSON을 여기에 붙여넣으세요."></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="label">렌더 모드</div>
+      <div class="row">
+        <label><input type="radio" name="renderMode" value="read-first" checked /> Read-First</label>
+        <label><input type="radio" name="renderMode" value="vector-heavy" /> Vector-Heavy 실험</label>
+      </div>
+      <p class="hint">Vector-Heavy는 핵심 텍스트는 유지하고, 화살표/diamond/일부 시각 레이어를 벡터 위주로 렌더합니다.</p>
+    </div>
+
+    <div class="row">
+      <button id="renderButton" disabled>Figma 렌더 시작</button>
+      <button class="secondary" id="exportActualButton" type="button">Actual Manifest 내보내기</button>
+      <button class="secondary" id="exportPageJsonButton" type="button">현재 페이지 JSON</button>
+      <button class="secondary" id="exportSelectionJsonButton" type="button">선택 영역 JSON</button>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const jsonText = document.getElementById("jsonText");
+      const status = document.getElementById("status");
+      const summary = document.getElementById("summary");
+      const renderButton = document.getElementById("renderButton");
+      const exportActualButton = document.getElementById("exportActualButton");
+      const exportPageJsonButton = document.getElementById("exportPageJsonButton");
+      const exportSelectionJsonButton = document.getElementById("exportSelectionJsonButton");
+      const clearButton = document.getElementById("clearButton");
+      const pptxFileInput = document.getElementById("pptxFileInput");
+      const pptxSlides = document.getElementById("pptxSlides");
+      const renderPptxButton = document.getElementById("renderPptxButton");
+      const renderModeInputs = Array.from(document.querySelectorAll('input[name="renderMode"]'));
+
+      let loadedJsonText = "";
+      const BUILD_TAG = "V54";
+      const REQUIRED_SERVER_VERSION = `CNSAtlasLocalPlugin/${BUILD_TAG}`;
+
+      function setStatus(message, isError = false) {
+        const raw = String(message || "");
+        status.textContent = raw.startsWith(`${BUILD_TAG} |`) ? raw : `${BUILD_TAG} | ${raw}`;
+        status.className = isError ? "status danger" : "status";
+      }
+
+      function setSummary(text) {
+        summary.textContent = text;
+      }
+
+      function getPayloadKind(payload) {
+        if (payload && Array.isArray(payload.pages)) {
+          if (payload.kind === "figma-replay-collection") {
+            return "figma-replay-collection";
+          }
+          return "intermediate";
+        }
+        if (payload && payload.kind === "slide-review-manifest" && payload.entry_bundle && payload.entry_bundle.document) {
+          return "slide-review-manifest";
+        }
+        if (payload && payload.kind === "figma-replay-bundle" && payload.document) {
+          return "figma-replay-bundle";
+        }
+        throw new Error("지원하지 않는 JSON 형식입니다. intermediate JSON, figma replay bundle JSON, slide review manifest JSON 중 하나를 넣어야 합니다.");
+      }
+
+      function validatePayload(payload) {
+        return {
+          payload,
+          kind: getPayloadKind(payload)
+        };
+      }
+
+      function summarizePayload(payload, fileName, kind) {
+        if (kind === "intermediate") {
+          const slides = payload.pages.map((page) => `- Slide ${page.slide_no}: ${page.title_or_label || "untitled"} (${page.candidates.length} candidates)`);
+          return [
+            `파일: ${fileName || "직접 입력"}`,
+            `형식: intermediate JSON`,
+            `슬라이드 수: ${payload.pages.length}`,
+            "",
+            ...slides
+          ].join("\n");
+        }
+
+        if (kind === "figma-replay-collection") {
+          const slides = payload.pages.map((page) => `- ${page.page_name || page.node_id || "unknown page"}`);
+          return [
+            `파일: ${fileName || "직접 입력"}`,
+            `형식: figma replay collection`,
+            `페이지 수: ${payload.pages.length}`,
+            "",
+            ...slides
+          ].join("\n");
+        }
+
+        if (kind === "slide-review-manifest") {
+          const exportStatus = Object.entries(payload.figma_exports || {})
+            .map(([key, value]) => `- ${key}: ${value && value.exists ? "available" : "missing"}`)
+            .join("\n");
+          return [
+            `파일: ${fileName || "직접 입력"}`,
+            `형식: slide review manifest`,
+            `리뷰: ${payload.title || payload.review_id || "unknown"}`,
+            `슬라이드: ${payload.slide_no || "unknown"}`,
+            `엔트리 번들: ${payload.entry_bundle_label || "entry_bundle"}`,
+            "",
+            `focus: ${(payload.focus || []).join(", ")}`,
+            "",
+            "Figma export 상태",
+            exportStatus || "- none"
+          ].join("\n");
+        }
+
+        const assetCount = payload.assets ? Object.keys(payload.assets).length : 0;
+        const missingAssets = Array.isArray(payload.missing_assets) ? payload.missing_assets.length : 0;
+        return [
+          `파일: ${fileName || "직접 입력"}`,
+          `형식: figma replay bundle`,
+          `페이지: ${payload.page_name || "unknown"}`,
+          `노드 ID: ${payload.node_id || "unknown"}`,
+          `에셋 수: ${assetCount}`,
+          `누락 에셋 수: ${missingAssets}`
+        ].join("\n");
+      }
+
+      function updateRenderAvailability() {
+        renderButton.disabled = !loadedJsonText.trim() && !jsonText.value.trim();
+      }
+
+      function parseSlidesInput(value) {
+        return value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .join(",");
+      }
+
+      async function readFileAsBase64(file) {
+        const buffer = await file.arrayBuffer();
+        let binary = "";
+        const bytes = new Uint8Array(buffer);
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const chunk = bytes.subarray(i, i + chunkSize);
+          binary += String.fromCharCode(...chunk);
+        }
+        return btoa(binary);
+      }
+
+      function loadJsonText(text, fileName) {
+        const trimmed = text.trim();
+        if (!trimmed) {
+          throw new Error("파일 내용이 비어 있습니다.");
+        }
+        if (trimmed.startsWith("PK")) {
+          throw new Error("PPTX 바이너리 파일입니다. intermediate JSON 파일을 선택해야 합니다.");
+        }
+
+          const result = validatePayload(JSON.parse(trimmed));
+          loadedJsonText = JSON.stringify(result.payload);
+          setSummary(summarizePayload(result.payload, fileName, result.kind));
+          setStatus(`${fileName || "직접 입력"} 검증 완료`);
+          updateRenderAvailability();
+      }
+
+      fileInput.addEventListener("change", async (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+          return;
+        }
+
+        try {
+          const text = await file.text();
+          jsonText.value = "";
+          loadJsonText(text, file.name);
+        } catch (error) {
+          loadedJsonText = "";
+          updateRenderAvailability();
+          setSummary("아직 파일이 없습니다.");
+          setStatus(error instanceof Error ? error.message : String(error), true);
+        }
+      });
+
+      renderPptxButton.addEventListener("click", async () => {
+        const file = pptxFileInput.files && pptxFileInput.files[0];
+        if (!file) {
+          setStatus("PPTX 파일을 먼저 선택하세요.", true);
+          return;
+        }
+
+        renderPptxButton.disabled = true;
+        setStatus("로컬 helper server로 PPTX 변환 요청 중...");
+
+        try {
+          const fileBase64 = await readFileAsBase64(file);
+          const response = await fetch("http://localhost:27184/render-pptx", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              fileBase64,
+              slides: parseSlidesInput(pptxSlides.value),
+            }),
+          });
+
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+          }
+
+          if (payload.kind !== "figma-replay-collection") {
+            throw new Error(`구버전 서버 응답입니다. kind=${payload.kind || "unknown"} (expected figma-replay-collection)`);
+          }
+          if ((payload.serverVersion || "") !== REQUIRED_SERVER_VERSION) {
+            throw new Error(
+              `서버 버전 불일치: ${payload.serverVersion || "unknown"} (expected ${REQUIRED_SERVER_VERSION}). 플러그인을 다시 임포트하고, 구서버를 모두 종료한 뒤 helper server를 재시작하세요.`
+            );
+          }
+
+          loadedJsonText = JSON.stringify(payload.payload);
+          setSummary(summarizePayload(payload.payload, file.name, getPayloadKind(payload.payload)));
+          const slideLabel = payload.slides && payload.slides.length
+            ? payload.slides.join(", ")
+            : "none";
+          const requestedLabel = Array.isArray(payload.requestedSlides) && payload.requestedSlides.length
+            ? payload.requestedSlides.join(", ")
+            : "ALL";
+          const pageSizes = Array.isArray(payload.pageSizes) ? payload.pageSizes : [];
+          const firstSize = pageSizes.length
+            ? `${pageSizes[0].width || "?"}x${pageSizes[0].height || "?"}`
+            : "unknown";
+          setStatus(
+            `${BUILD_TAG} | kind=${payload.kind || "unknown"} | PPTX 변환 완료: slides ${slideLabel} (count: ${(payload.slides && payload.slides.length) || 0}, requested: ${requestedLabel}, firstPage=${firstSize}, native=${payload.nativeSizeEnabled === true ? "on" : "off"}, server: ${payload.serverVersion || "unknown"})`
+          );
+          updateRenderAvailability();
+          parent.postMessage({
+            pluginMessage: {
+              type: "render-intermediate-json",
+              jsonText: loadedJsonText,
+              renderMode: document.querySelector('input[name="renderMode"]:checked').value,
+            }
+          }, "*");
+        } catch (error) {
+          setStatus(`PPTX 변환 실패: ${error.message || error}`, true);
+        } finally {
+          renderPptxButton.disabled = false;
+        }
+      });
+
+      jsonText.addEventListener("input", () => {
+        updateRenderAvailability();
+      });
+
+      clearButton.addEventListener("click", () => {
+        fileInput.value = "";
+        jsonText.value = "";
+        loadedJsonText = "";
+        setSummary("아직 파일이 없습니다.");
+        setStatus("초기화되었습니다.");
+        updateRenderAvailability();
+      });
+
+      renderButton.addEventListener("click", () => {
+        const sourceText = loadedJsonText.trim() ? loadedJsonText : jsonText.value.trim();
+        if (!sourceText) {
+          setStatus("JSON이 없습니다.", true);
+          return;
+        }
+
+        try {
+          const result = validatePayload(JSON.parse(sourceText));
+          const payload = result.payload;
+          const selectedMode = renderModeInputs.find((input) => input.checked)?.value || "read-first";
+          const renderTarget = result.kind === "intermediate"
+            ? `${payload.pages.length} slides`
+            : `${payload.page_name || "1 page"} replay`;
+          setStatus(`렌더링 중... (${renderTarget})`);
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "render-intermediate-json",
+                jsonText: JSON.stringify(payload),
+                renderMode: selectedMode
+              }
+            },
+            "*"
+          );
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : String(error), true);
+        }
+      });
+
+      exportActualButton.addEventListener("click", () => {
+        setStatus("Actual manifest 추출 중...");
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "export-actual-manifest"
+            }
+          },
+          "*"
+        );
+      });
+
+      exportPageJsonButton.addEventListener("click", () => {
+        setStatus("현재 페이지 JSON 추출 중...");
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "export-figma-analysis-json",
+              scope: "page"
+            }
+          },
+          "*"
+        );
+      });
+
+      exportSelectionJsonButton.addEventListener("click", () => {
+        setStatus("선택 영역 JSON 추출 중...");
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "export-figma-analysis-json",
+              scope: "selection"
+            }
+          },
+          "*"
+        );
+      });
+
+      function downloadTextFile(filename, text) {
+        const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      }
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) {
+          return;
+        }
+        if (message.type === "render-success") {
+          setStatus(message.message);
+        }
+        if (message.type === "render-error") {
+          setStatus(`Error: ${message.message}`, true);
+        }
+        if (message.type === "actual-manifest-exported") {
+          downloadTextFile(message.filename, message.jsonText);
+          setStatus(`${message.filename} 다운로드 완료`);
+        }
+        if (message.type === "figma-analysis-exported") {
+          downloadTextFile(message.filename, message.jsonText);
+          setStatus(`${message.filename} 다운로드 완료`);
+        }
+      };
+    </script>
+  </body>
+</html>

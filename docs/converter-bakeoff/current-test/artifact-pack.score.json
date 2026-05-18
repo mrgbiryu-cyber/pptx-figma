@@ -1,0 +1,47 @@
+{
+  "kind": "pptx-multi-artifact-pack-score",
+  "generated_at": "2026-05-18T08:37:05.948547+00:00",
+  "source": "docs\\converter-bakeoff\\current-test",
+  "out_dir": "docs\\converter-bakeoff\\current-test",
+  "status": "ok",
+  "details": {
+    "scores": {
+      "powerpoint": {
+        "status": "skipped"
+      },
+      "powerpoint_com_structure": {
+        "status": "ok",
+        "shape_count": 0,
+        "text_shape_count": 0,
+        "table_shape_count": 0,
+        "fill_color_shape_count": 0,
+        "line_color_shape_count": 0,
+        "z_order_shape_count": 0,
+        "id_shape_count": 0,
+        "text_shape_ratio": 0.0,
+        "fill_color_ratio": 0.0,
+        "z_order_ratio": 0.0,
+        "id_ratio": 0.0
+      },
+      "aspose": {
+        "status": "skipped"
+      },
+      "libreoffice": {
+        "status": "skipped"
+      },
+      "ai_semantic": {
+        "status": "skipped"
+      }
+    },
+    "recommendation": [
+      "PowerPoint COM ran but returned zero shapes; open the PPTX manually in PowerPoint, clear Protected View/prompts, close it, and rerun.",
+      "Aspose exporter is not ready; install/license it before deciding on the new primary extractor.",
+      "Semantic exporters are unavailable; treat this as optional after object/SVG validation."
+    ],
+    "gate_notes": [
+      "Do not accept full-slide raster backgrounds as product success.",
+      "Prefer converters that expose z-order, stable IDs, resolved colors, text runs, and table/cell structure.",
+      "SVG is an analysis artifact unless text and object identity can be mapped back to native Figma nodes."
+    ]
+  }
+}

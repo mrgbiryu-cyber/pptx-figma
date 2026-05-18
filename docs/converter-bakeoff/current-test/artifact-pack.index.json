@@ -1,0 +1,31 @@
+{
+  "kind": "pptx-multi-artifact-pack",
+  "generated_at": "2026-05-18T08:34:27.215193+00:00",
+  "source": "sampling\\current-test.pptx",
+  "out_dir": "docs\\converter-bakeoff\\current-test",
+  "status": "ok",
+  "details": {
+    "slides": null,
+    "dry_run": false,
+    "exporters": [
+      {
+        "name": "powerpoint-com-structure",
+        "out_dir": "C:\\Users\\A85378\\Desktop\\project\\cnsatlas\\docs\\converter-bakeoff\\current-test\\powerpoint-com-structure",
+        "manifest": "C:\\Users\\A85378\\Desktop\\project\\cnsatlas\\docs\\converter-bakeoff\\current-test\\powerpoint-com-structure\\powerpoint-com-structure.manifest.json",
+        "manifest_status": "ok",
+        "command_status": "ok",
+        "returncode": 0,
+        "command": [
+          "C:\\Users\\A85378\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+          "scripts/export_powerpoint_com_structure.py",
+          "--pptx",
+          "C:\\Users\\A85378\\Desktop\\project\\cnsatlas\\sampling\\current-test.pptx",
+          "--out-dir",
+          "C:\\Users\\A85378\\Desktop\\project\\cnsatlas\\docs\\converter-bakeoff\\current-test\\powerpoint-com-structure"
+        ],
+        "stderr": ""
+      }
+    ],
+    "next_step": "Run score_multi_artifact_pack.py to compare structure availability before choosing the primary converter."
+  }
+}

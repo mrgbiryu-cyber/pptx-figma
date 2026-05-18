@@ -1,0 +1,17 @@
+{
+  "name": "CNS Atlas PPT Visual Test V50",
+  "id": "1314324278456201928",
+  "api": "1.0.0",
+  "editorType": [
+    "figma"
+  ],
+  "main": "code.js",
+  "ui": "ui.html",
+    "networkAccess": {
+      "allowedDomains": ["none"],
+      "devAllowedDomains": [
+        "http://localhost:27184"
+      ],
+      "reasoning": "Local JSON processing and local PPTX helper server"
+    }
+  }
